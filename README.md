@@ -20,7 +20,7 @@ Plateforme d'enchères en ligne développée avec Flask.
 
 ## Installation
 
-\`\`\`bash
+```bash
 # Cloner le dépôt
 git clone https://github.com/KingRandAlThor/auction-eleven.git
 
@@ -29,9 +29,14 @@ pip install -r requirements.txt
 
 # Lancer l'application
 python run.py
-\`\`\`
-
-# Environnement virtuel
-/home/RandAlThor/.virtualenvs/auction_env
 ```
-<!-- filepath: c:\Users\mrpan\Documents\VS CODE\Auction Eleven\requirements.txt -->
+
+## 2. Problème avec le fichier app.py sur PythonAnywhere
+
+D'après le code que vous avez partagé, il semble que votre fichier app.py utilise une variable `basedir` qui n'est peut-être pas définie dans le contexte WSGI. Vous devez vous assurer que le fichier app.py contient toutes les importations et définitions nécessaires.
+
+Sur PythonAnywhere, dans la console Bash, vérifiez le contenu de votre app.py :
+
+```bash
+cd ~/mysite
+cat [app.py](http://_vscodecontentref_/2)
