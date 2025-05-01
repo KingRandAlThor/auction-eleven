@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Mes enchères{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="mb-4">Mes participations aux enchères</h1>
+    
+    {% if bids %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Produit</th>
+                            <th>Prix proposé</th>
+                            <th>Date</th>
+                            <th>Jetons utilisés</th>
+                            <th>Statut</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bid in bids %}
+                        <tr>
+                            <td>{{ bid.auction.product.name }}</td>
+                            <td>{{ "%.2f"|format(bid.price) }}€</td>
+                            <td>{{ bid.bid_date.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>{{ bid.tokens_used }}</td>
+                            <td>
+                                {% if bid.auction.status == 'active' %}
+                                    <span class="badge bg-success">En cours</span>
+                                {% elif bid.auction.status == 'ended' %}
+                                    {% if bid.auction.winner_id == current_user.id %}
+                                        <span class="badge bg-success">Gagnée!</span>
+                                    {% elif bid.auction.winner_id %}
+                                        <span class="badge bg-danger">Perdue</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">Sans gagnant</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ bid.auction.status }}</span>
+                                {% endif %}
+                                
+                                {% if bid.is_refunded %}
+                                    <span class="badge bg-info">Remboursée</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('auction_detail', id=bid.auction.id) }}" class="btn btn-sm btn-outline-primary">
+                                    Voir
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        Vous n'avez pas encore participé à des enchères.
+    </div>
+    <p>
+        <a href="{{ url_for('auctions') }}" class="btn btn-primary">
+            Découvrir les enchères disponibles
+        </a>
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

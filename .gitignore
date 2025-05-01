@@ -1,0 +1,32 @@
+# Environnements virtuels
+.conda/
+venv/
+ENV/
+env/
+__pycache__/
+
+# Base de données
+*.db
+*.sqlite3
+
+# Fichiers de configuration avec informations sensibles
+.env
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers temporaires
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.log
+*.tmp
+
+# Dossiers IDE
+.idea/
+.vscode/
+*.swp
+*.swo

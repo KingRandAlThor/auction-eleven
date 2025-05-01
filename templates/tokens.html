@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Acheter des jetons{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="mb-4">Acheter des jetons</h1>
+    
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4 text-center">
+                    <h3 class="card-title">Votre solde actuel</h3>
+                    <div class="token-balance my-3">{{ current_user.token_balance }}</div>
+                    <p class="text-muted mb-0">jetons disponibles</p>
+                </div>
+            </div>
+            
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light py-3">
+                    <h4 class="mb-0">Pourquoi acheter des jetons?</h4>
+                </div>
+                <div class="card-body p-4">
+                    <ul class="mb-0">
+                        <li class="mb-2">Participez à plus d'enchères pour augmenter vos chances de gagner</li>
+                        <li class="mb-2">Proposez plusieurs prix dans une même enchère</li>
+                        <li class="mb-2">Accédez aux produits premium nécessitant plusieurs jetons par mise</li>
+                        <li>Plus vous achetez, plus le prix unitaire est avantageux!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <h3 class="mb-3">Packs disponibles</h3>
+            
+            {% if token_packs %}
+                <div class="row g-3">
+                    {% for pack in token_packs %}
+                    <div class="col-md-6">
+                        <div class="card h-100 border-0 shadow-sm token-pack">
+                            <div class="card-body p-4 text-center">
+                                <h4 class="card-title">{{ pack.name }}</h4>
+                                <div class="display-4 my-3 fw-bold text-primary">{{ pack.quantity }}</div>
+                                <p class="text-muted mb-3">jetons</p>
+                                <div class="pricing mb-3">
+                                    <span class="fs-3 fw-bold">{{ "%.2f"|format(pack.price_euros) }}€</span>
+                                    <br>
+                                    <small class="text-muted">
+                                        ({{ "%.2f"|format(pack.price_euros / pack.quantity) }}€ par jeton)
+                                    </small>
+                                </div>
+                                <form action="{{ url_for('buy_tokens', pack_id=pack.id) }}" method="POST">
+                                    <button type="submit" class="btn btn-primary w-100">Acheter</button>
+                                </form>
+                            </div>
+                            {% if pack.description %}
+                            <div class="card-footer text-center py-2">
+                                {{ pack.description }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Aucun pack de jetons n'est disponible pour le moment.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

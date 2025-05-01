@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}Catalogue des enchères{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-5 fw-bold">Découvrez nos enchères</h1>
+            <p class="lead text-secondary mb-0">
+                Proposez le prix le plus bas et unique pour remporter l'article à une fraction de sa valeur!
+            </p>
+        </div>
+        <div class="col-md-4 d-flex align-items-center justify-content-end">
+            <div class="text-end">
+                <span class="badge bg-primary p-2 fs-6">
+                    <i class="bi bi-info-circle me-1"></i>
+                    {{ auctions|length }} enchère(s) active(s)
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Message si aucune enchère -->
+    {% if auctions|length == 0 %}
+    <div class="alert alert-info shadow-sm">
+        <div class="d-flex">
+            <div class="me-3">
+                <i class="bi bi-exclamation-circle fs-3"></i>
+            </div>
+            <div>
+                <h5>Aucune enchère disponible</h5>
+                <p class="mb-0">Il n'y a pas d'enchères actives en ce moment. Revenez plus tard pour découvrir de nouvelles opportunités!</p>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    
+    <!-- Liste des enchères -->
+    <div class="row g-4">
+        {% for auction in auctions %}
+        <div class="col-md-6 col-lg-4">
+            <article class="card h-100 shadow-sm border-0 auction-card">
+                <!-- Image du produit -->
+                <div class="position-relative">
+                    <img src="{{ url_for('static', filename=auction.product.image_url) }}" 
+                         class="card-img-top auction-image" 
+                         alt="{{ auction.product.name }}">
+                    <span class="position-absolute top-0 end-0 m-2 badge bg-primary p-2">
+                        {{ auction.tokens_required }} jeton(s) par mise
+                    </span>
+                </div>
+                
+                <!-- Informations produit -->
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title fw-bold">{{ auction.product.name }}</h5>
+                    <p class="card-text text-secondary small mb-3">
+                        {{ auction.product.description|truncate(80) }}
+                    </p>
+                    
+                    <!-- Prix marché -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="text-muted small">Prix marché:</span>
+                            <span class="text-danger fw-bold fs-5 ms-2">
+                                {{ "%.2f"|format(auction.product.market_price) }}€
+                            </span>
+                        </div>
+                        <span class="badge bg-secondary">
+                            {{ auction.bids.count() }} mise(s)
+                        </span>
+                    </div>
+                    
+                    <!-- Barre de progression -->
+                    {% set time_elapsed = (now - auction.start_date).total_seconds() %}
+                    {% set total_duration = (auction.end_date - auction.start_date).total_seconds() %}
+                    {% set percent_complete = ((time_elapsed / total_duration * 100)|round|int) if total_duration > 0 else 0 %}
+                    {% set percent_complete = percent_complete if percent_complete >= 0 else 0 %}
+                    
+                    <div class="time-progress mb-2">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 data-width="{{ percent_complete }}"
+                                 aria-valuenow="{{ percent_complete }}" 
+                                 aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Temps restant -->
+                    <p class="text-center mb-4 small fw-bold">
+                        <i class="bi bi-clock me-1"></i>
+                        <span class="time-left" data-end-time="{{ auction.end_date.isoformat() }}">
+                            {% set time_left = auction.end_date - now %}
+                            {% if time_left.days > 0 %}
+                                {{ time_left.days }} jour(s) {{ (time_left.seconds // 3600)|int }} heure(s)
+                            {% elif time_left.seconds > 3600 %}
+                                {{ (time_left.seconds // 3600)|int }} heure(s) {{ (time_left.seconds % 3600 // 60)|int }} minute(s)
+                            {% else %}
+                                {{ (time_left.seconds // 60)|int }} minute(s)
+                            {% endif %}
+                        </span>
+                    </p>
+                    
+                    <!-- Bouton de participation -->
+                    <div class="mt-auto text-center">
+                        <a href="{{ url_for('auction_detail', id=auction.id) }}" 
+                           class="btn btn-outline-primary w-100">
+                            <i class="bi bi-hand-index-thumb me-1"></i> Voir et participer
+                        </a>
+                    </div>
+                </div>
+            </article>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/auction-list.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Appliquer les largeurs aux barres de progression
+        document.querySelectorAll('.progress-bar[data-width]').forEach(function(bar) {
+            const width = bar.getAttribute('data-width');
+            bar.style.width = width + '%';
+        });
+        
+        // Animation d'entrée des cartes
+        const auctionCards = document.querySelectorAll('.auction-card');
+        if (auctionCards.length > 0) {
+            auctionCards.forEach(function(card, index) {
+                setTimeout(function() {
+                    card.classList.add('fade-in');
+                }, index * 100);
+            });
+        }
+
+        // Mise à jour en temps réel du temps restant (optionnel)
+        function updateTimeLeft() {
+            const timeElements = document.querySelectorAll('.time-left');
+            const now = new Date();
+            
+            timeElements.forEach(function(element) {
+                const endTime = new Date(element.getAttribute('data-end-time'));
+                const diff = endTime - now;
+                
+                if (diff > 0) {
+                    // Calculer jours, heures, minutes
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    
+                    let timeString = '';
+                    if (days > 0) {
+                        timeString = `${days} jour(s) ${hours} heure(s)`;
+                    } else if (hours > 0) {
+                        timeString = `${hours} heure(s) ${minutes} minute(s)`;
+                    } else {
+                        timeString = `${minutes} minute(s)`;
+                    }
+                    
+                    element.textContent = timeString;
+                } else {
+                    element.textContent = 'Terminée';
+                    element.classList.add('text-danger');
+                }
+            });
+        }
+        
+        // Colorier les barres de progression en fonction du pourcentage
+        document.querySelectorAll('.progress-bar').forEach(function(bar) {
+            const width = parseInt(bar.getAttribute('data-width'));
+            if (width > 80) {
+                bar.classList.remove('bg-success');
+                bar.classList.add('bg-danger');
+            } else if (width > 50) {
+                bar.classList.remove('bg-success');
+                bar.classList.add('bg-warning');
+            }
+        });
+    });
+</script>
+{% endblock %}
