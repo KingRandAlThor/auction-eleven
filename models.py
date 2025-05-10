@@ -25,8 +25,7 @@ class User(UserMixin, db.Model):
     def set_password(self, password):
         """Set the password hash for the user."""
         try:
-            self.password_hash = generate_password_hash(password)
-            print(f"Mot de passe défini pour {self.email}")
+            self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
             return True
         except Exception as e:
             print(f"Erreur lors de la définition du mot de passe: {str(e)}")
@@ -34,7 +33,6 @@ class User(UserMixin, db.Model):
         
     def check_password(self, password):
         """Vérifier le mot de passe de l'utilisateur."""
-        from werkzeug.security import check_password_hash
         return check_password_hash(self.password_hash, password)
     
     def __repr__(self):
@@ -89,7 +87,7 @@ class Bid(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     auction_id = db.Column(db.Integer, db.ForeignKey('auctions.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    price = db.Column(db.Float, nullable=False)
+    price = db.Column(db.Float, nullable=False)  # MODIFIÉ: price au lieu de amount
     bid_date = db.Column(db.DateTime, default=datetime.utcnow)
     tokens_used = db.Column(db.Integer, default=1)
     is_winning = db.Column(db.Boolean, default=False)

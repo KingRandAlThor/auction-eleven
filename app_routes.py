@@ -1,22 +1,21 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify, session
 from werkzeug.security import generate_password_hash
 from flask_login import login_user, logout_user, current_user, login_required
-from datetime import datetime
+from datetime import datetime, timedelta
 from app import app, db
 from models import User, Product, Auction, Bid, TokenPack, TokenTransaction
-from forms import LoginForm, RegisterForm, BidForm
+from forms import LoginForm, RegisterForm, BidForm, AuctionCreateForm, CreateAuctionForm
+import os
+from werkzeug.utils import secure_filename
 
 # Route principale - page d'accueil
 @app.route('/')
 def index():
-    active_auctions = Auction.query.filter_by(status='active').order_by(Auction.end_date).limit(3).all()
+    active_auctions = Auction.query.filter_by(status='active').order_by(Auction.end_date).limit(6).all()
+    featured_auctions = active_auctions[:3]  # Les 3 premiers pour la section vedette
+    auctions = active_auctions[3:] if len(active_auctions) > 3 else []  # Le reste pour la section supplémentaire
     
-    # Logs de débogage
-    print(f"Nombre d'enchères actives trouvées : {len(active_auctions)}")
-    for auction in active_auctions:
-        print(f"Enchère ID: {auction.id}, Produit: {auction.product.name if auction.product else 'Non défini'}")
-    
-    return render_template('index.html', featured_auctions=active_auctions)
+    return render_template('index.html', featured_auctions=featured_auctions, auctions=auctions)
 
 # Route pour la liste des enchères
 @app.route('/auctions')
@@ -32,31 +31,15 @@ def auctions():
     return render_template('auctions.html', auctions=active_auctions, now=now)
 
 # Route pour le détail d'une enchère
-@app.route('/auction/<int:id>')
-def auction_detail(id):
-    auction = Auction.query.get_or_404(id)
+@app.route('/auction/<int:auction_id>')
+def auction_detail(auction_id):
+    auction = Auction.query.get_or_404(auction_id)
+    
+    # Calculer le temps restant pour l'enchère
     now = datetime.utcnow()
-    time_left = auction.end_date - now
+    time_left = auction.end_date - now if auction.end_date > now else timedelta(0)
     
-    # Créer le formulaire de mise
-    form = BidForm()
-    
-    # Si l'utilisateur est connecté, récupérer ses mises sur cette enchère
-    user_bids = []
-    if current_user.is_authenticated:
-        user_bids = Bid.query.filter_by(
-            auction_id=id,
-            user_id=current_user.id
-        ).order_by(Bid.bid_date.desc()).all()
-    
-    return render_template(
-        'auction_detail.html', 
-        auction=auction, 
-        form=form,
-        user_bids=user_bids,
-        now=now,
-        time_left=time_left
-    )
+    return render_template('auction_detail.html', auction=auction, time_left=time_left, now=now)
 
 # Route pour la connexion
 @app.route('/login', methods=['GET', 'POST'])
@@ -234,7 +217,7 @@ def my_bids():
 # Ajouter cette route pour les enchères via API
 @app.route('/api/bids', methods=['POST'])
 @login_required
-def place_bid():
+def api_place_bid():
     data = request.json
     auction_id = data.get('auction_id')
     price = data.get('price')
@@ -286,6 +269,74 @@ def place_bid():
         'message': 'Votre enchère a été placée avec succès!',
         'new_balance': current_user.token_balance
     })
+
+# Première occurrence (à commenter ou supprimer)
+# @app.route('/bids', methods=['POST'])
+# def place_bid():
+#     # Ancien code...
+
+# Deuxième occurrence (à conserver)
+@app.route('/bids', methods=['POST'])
+@login_required
+def place_bid():
+    auction_id = request.form.get('auction_id', type=int)
+    amount = request.form.get('amount', type=float)  # Vous recevez toujours 'amount' du formulaire
+    
+    # Validation de base
+    if not auction_id or not amount:
+        return jsonify({'success': False, 'message': 'Données d\'enchère invalides'}), 400
+    
+    # Récupérer l'enchère
+    auction = Auction.query.get_or_404(auction_id)
+    
+    # Vérifier si l'enchère est toujours active
+    now = datetime.utcnow()
+    if auction.end_date <= now:
+        return jsonify({'success': False, 'message': 'Cette enchère est terminée'}), 400
+    
+    # Vérifier si l'utilisateur a assez de jetons
+    if current_user.token_balance < auction.tokens_required:
+        return jsonify({'success': False, 'message': f'Vous avez besoin de {auction.tokens_required} jetons pour participer'}), 400
+    
+    # Ne garder QUE cette vérification pour les enchères inversées
+    lowest_bid = Bid.query.filter_by(auction_id=auction_id).order_by(Bid.price.asc()).first()  # MODIFIÉ: price
+    
+    if lowest_bid:
+        max_allowed = lowest_bid.price - 0.01  # MODIFIÉ: price
+        if amount >= lowest_bid.price:  # MODIFIÉ: price
+            return jsonify({'success': False, 'message': f'Votre enchère doit être inférieure à {lowest_bid.price:.2f}€'}), 400
+    else:
+        # Première enchère: max 90% du prix du marché
+        product_price = auction.product.market_price or 100.0
+        max_allowed = round(product_price * 0.9, 2)
+        if amount > max_allowed:
+            return jsonify({'success': False, 'message': f'Votre première enchère doit être inférieure à {max_allowed:.2f}€'}), 400
+    
+    # Créer l'enchère
+    try:
+        bid = Bid(
+            user_id=current_user.id,
+            auction_id=auction_id,
+            price=amount,  # MODIFIÉ: utiliser price au lieu de amount
+            bid_date=now  # Utiliser bid_date ou placed_at selon votre modèle
+        )
+        
+        # Déduire les jetons
+        current_user.token_balance -= auction.tokens_required
+        
+        # Enregistrer les changements
+        db.session.add(bid)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Enchère de {amount:.2f}€ placée avec succès',
+            'new_amount': amount,
+            'new_balance': current_user.token_balance
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erreur: {str(e)}'}), 500
 
 # @app.route('/confirm/<token>')
 # def confirm_email(token):
@@ -345,6 +396,109 @@ def place_bid():
     
 #     return redirect(url_for('login'))
 
+@app.route('/create-auction', methods=['GET', 'POST'])
+@login_required
+def create_auction():
+    form = CreateAuctionForm()
+    
+    if form.validate_on_submit():
+        # Gestion de l'image
+        image_path = 'images/products/default.jpg'
+        if form.image.data:
+            filename = secure_filename(form.image.data.filename)
+            # Créer le dossier s'il n'existe pas
+            os.makedirs(os.path.join(app.static_folder, 'images/products'), exist_ok=True)
+            # Sauvegarder l'image
+            form.image.data.save(os.path.join(app.static_folder, 'images/products', filename))
+            image_path = f'images/products/{filename}'
+        
+        # Créer le produit
+        product = Product(
+            name=form.product_name.data,
+            description=form.description.data,
+            image_url=image_path,
+            market_price=form.market_price.data,
+            created_by=current_user.id,
+            created_at=datetime.utcnow(),
+            is_active=True
+        )
+        db.session.add(product)
+        db.session.flush()  # Pour obtenir l'ID
+        
+        # Créer l'enchère
+        duration = int(form.duration.data)
+        now = datetime.utcnow()
+        
+        auction = Auction(
+            product_id=product.id,
+            start_date=now,
+            end_date=now + timedelta(days=duration),
+            tokens_required=form.tokens_required.data,
+            status='active'
+        )
+        db.session.add(auction)
+        db.session.commit()
+        
+        flash('Votre produit a été mis aux enchères avec succès!', 'success')
+        return redirect(url_for('auction_detail', auction_id=auction.id))
+    
+    return render_template('create_auction.html', form=form, title="Vendre un produit")
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
+
+# Ajouter cette nouvelle route à app_routes.py
+@app.route('/api/auction/<int:auction_id>/min-bid', methods=['GET'])
+def get_min_bid(auction_id):
+    auction = Auction.query.get_or_404(auction_id)
+    
+    # Vérifier si l'enchère est active
+    now = datetime.utcnow()
+    if auction.end_date <= now:
+        return jsonify({'success': False, 'message': 'Cette enchère est terminée'}), 400
+    
+    # Trouver l'enchère la plus basse actuelle - MODIFIÉ: price au lieu de amount
+    lowest_bid = Bid.query.filter_by(auction_id=auction_id).order_by(Bid.price.asc()).first()
+    
+    # Prix minimum autorisé
+    if lowest_bid:
+        min_bid = lowest_bid.price - 0.01  # MODIFIÉ: price au lieu de amount
+        min_bid = round(min_bid, 2)
+    else:
+        # Première enchère: 90% du prix du marché
+        product_price = auction.product.market_price or 100.0
+        min_bid = round(product_price * 0.9, 2)
+    
+    return jsonify({
+        'success': True,
+        'min_bid': min_bid,
+        'formatted_min_bid': f"{min_bid:.2f}€"
+    })
+
+@app.route('/api/auction/<int:auction_id>/max-bid', methods=['GET'])
+def get_max_bid(auction_id):
+    auction = Auction.query.get_or_404(auction_id)
+    
+    # Vérifier si l'enchère est active
+    now = datetime.utcnow()
+    if auction.end_date <= now:
+        return jsonify({'success': False, 'message': 'Cette enchère est terminée'}), 400
+    
+    # Trouver l'enchère la plus basse actuelle
+    lowest_bid = Bid.query.filter_by(auction_id=auction_id).order_by(Bid.amount.asc()).first()
+    
+    # Prix maximum autorisé (1 centime de moins que l'enchère actuelle)
+    if lowest_bid:
+        max_bid = lowest_bid.amount - 0.01
+    else:
+        # Première enchère: 90% du prix du marché
+        max_bid = auction.product.market_price * 0.9
+        
+    max_bid = round(max_bid, 2)  # Arrondir à 2 décimales
+    
+    return jsonify({
+        'success': True,
+        'max_bid': max_bid,
+        'formatted_max_bid': f"{max_bid:.2f}€"
+    })

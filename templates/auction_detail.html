@@ -3,7 +3,7 @@
 {% block title %}{{ auction.product.name }} | Auction Eleven{% endblock %}
 
 {% block content %}
-<div class="container my-5">
+<div class="container my-5" data-auction-id="{{ auction.id }}">
     <div class="auction-detail-container">
         <!-- En-tête avec nom du produit et navigation -->
         <div class="auction-header mb-4">
@@ -82,15 +82,27 @@
                     </div>
                     
                     <form id="bid-form" class="mb-3">
-                        <input type="hidden" id="auction-id" value="{{ auction.id }}">
+                        <input type="hidden" name="auction_id" value="{{ auction.id }}">
                         <div class="mb-3">
-                            <label for="bid-amount" class="form-label">Votre prix (€)</label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" id="bid-amount" 
-                                       min="0.01" step="0.01" required placeholder="Proposez votre prix">
-                                <span class="input-group-text">€</span>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Enchères inversées:</strong> Proposez un prix plus bas que l'enchère actuelle pour remporter le produit!
                             </div>
-                            <div class="form-text">Proposez le prix que vous êtes prêt à payer pour ce produit.</div>
+                            <p class="text-info">
+                                <strong>Enchère minimale autorisée:</strong> 
+                                <span id="min-bid-amount">Chargement...</span>
+                            </p>
+                            <label for="amount" class="form-label">Votre prix (€)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">€</span>
+                                <input type="number" 
+                                       class="form-control" 
+                                       name="amount" 
+                                       id="amount" 
+                                       step="0.01" 
+                                       required>
+                            </div>
+                            <div class="form-text">Proposez un prix inférieur à l'enchère actuelle.</div>
                         </div>
                         <button type="submit" class="btn btn-primary bid-submit-btn">
                             <i class="bi bi-hand-index-thumb me-2"></i>Soumettre mon enchère
@@ -145,7 +157,7 @@
 
 {% block extra_js %}
 <script>
-    // Fonction pour mettre à jour le chronomètre
+    // Conserver uniquement la fonction updateCountdown
     function updateCountdown() {
         const now = new Date().getTime();
         const timerElement = document.querySelector('.countdown-timer-large');
@@ -187,89 +199,11 @@
         }
     }
     
-    // Fonction pour soumettre une enchère
-    async function submitBid(event) {
-        event.preventDefault();
-        
-        const bidForm = document.getElementById('bid-form');
-        const submitButton = bidForm.querySelector('button[type="submit"]');
-        const resultDiv = document.getElementById('bid-result');
-        const auctionId = document.getElementById('auction-id').value;
-        const bidAmount = document.getElementById('bid-amount').value;
-        
-        // Validation de base
-        if (!bidAmount || isNaN(parseFloat(bidAmount)) || parseFloat(bidAmount) <= 0) {
-            resultDiv.innerHTML = 'Veuillez entrer un prix valide.';
-            resultDiv.classList.remove('d-none', 'alert-success');
-            resultDiv.classList.add('alert-danger');
-            return;
-        }
-        
-        try {
-            // Désactiver le bouton et afficher l'indicateur de chargement
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Traitement...';
-            
-            const response = await fetch('/api/bids', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    auction_id: auctionId,
-                    price: bidAmount
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                resultDiv.innerHTML = data.message;
-                resultDiv.classList.remove('d-none', 'alert-danger');
-                resultDiv.classList.add('alert-success');
-                
-                // Mettre à jour le solde affiché
-                const tokenBalance = document.querySelector('.token-balance');
-                if (tokenBalance) {
-                    tokenBalance.textContent = `${data.new_balance} jetons`;
-                }
-                
-                // Réinitialiser le formulaire
-                bidForm.reset();
-                
-                // Recharger la page après un délai pour voir les mises à jour
-                setTimeout(() => {
-                    window.location.reload();
-                }, 3000);
-                
-            } else {
-                resultDiv.innerHTML = data.message;
-                resultDiv.classList.remove('d-none', 'alert-success');
-                resultDiv.classList.add('alert-danger');
-            }
-        } catch (error) {
-            resultDiv.innerHTML = 'Une erreur est survenue lors de la communication avec le serveur.';
-            resultDiv.classList.remove('d-none', 'alert-success');
-            resultDiv.classList.add('alert-danger');
-            console.error('Erreur:', error);
-        } finally {
-            // Réactiver le bouton
-            submitButton.disabled = false;
-            submitButton.innerHTML = '<i class="bi bi-hand-index-thumb me-2"></i>Soumettre mon enchère';
-        }
-    }
-    
-    // Initialiser les événements
+    // Initialiser le compte à rebours
     document.addEventListener('DOMContentLoaded', function() {
         // Démarrer le compte à rebours et le mettre à jour toutes les secondes
         updateCountdown();
         setInterval(updateCountdown, 1000);
-        
-        // Soumettre le formulaire d'enchère
-        const bidForm = document.getElementById('bid-form');
-        if (bidForm) {
-            bidForm.addEventListener('submit', submitBid);
-        }
     });
 </script>
 {% endblock %}

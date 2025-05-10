@@ -1,0 +1,76 @@
+<!-- templates/create_auction.html -->
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0"><i class="bi bi-tag me-2"></i>Mettre un produit aux enchères</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.product_name.label(class="form-label fw-bold") }}
+                            {{ form.product_name(class="form-control") }}
+                            {% for error in form.product_name.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label fw-bold") }}
+                            {{ form.description(class="form-control", rows=4) }}
+                            {% for error in form.description.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.market_price.label(class="form-label fw-bold") }}
+                            {{ form.market_price(class="form-control") }}
+                            {% for error in form.market_price.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.image.label(class="form-label fw-bold") }}
+                            {{ form.image(class="form-control") }}
+                            <div class="form-text">Format recommandé: JPG ou PNG, max 2MB</div>
+                            {% for error in form.image.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <hr class="my-4">
+                        <h5 class="mb-3">Paramètres de l'enchère</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.duration.label(class="form-label fw-bold") }}
+                                {{ form.duration(class="form-select") }}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.tokens_required.label(class="form-label fw-bold") }}
+                                {{ form.tokens_required(class="form-control") }}
+                                <div class="form-text">Nombre de jetons nécessaires pour participer</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid mt-4">
+                            {{ form.submit(class="btn btn-success btn-lg") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

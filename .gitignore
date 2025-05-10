@@ -1,32 +1,37 @@
-# Environnements virtuels
-.conda/
+# Environnement virtuel
+.venv/
 venv/
-ENV/
 env/
-__pycache__/
 
-# Base de données
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Fichiers de base de données
 *.db
+*.sqlite
 *.sqlite3
 
-# Fichiers de configuration avec informations sensibles
+# Fichiers locaux
+instance/
 .env
+
+# Logs
+*.log
+
+# Fichiers VS Code
+.vscode/
 
 # Fichiers système
 .DS_Store
 Thumbs.db
 
 # Fichiers temporaires
-*.pyc
-*.pyo
-*.pyd
 .Python
-*.so
-*.log
 *.tmp
 
 # Dossiers IDE
 .idea/
-.vscode/
 *.swp
 *.swo

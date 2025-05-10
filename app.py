@@ -41,3 +41,51 @@ def load_user(user_id):
 
 # Importez les routes à la fin pour éviter les importations circulaires
 from app_routes import *
+
+from app import app, db
+from models import Auction
+import inspect
+
+with app.app_context():
+    # Afficher les attributs de la classe Auction
+    print("Attributs du modèle Auction:")
+    for attr_name in dir(Auction):
+        if not attr_name.startswith('_') and not callable(getattr(Auction, attr_name)):
+            print(f"- {attr_name}")
+    
+    # Afficher les colonnes de la table
+    print("\nColonnes de la table Auction:")
+    for column in Auction.__table__.columns:
+        print(f"- {column.name} (type: {column.type})")
+    
+    # Créer un exemple d'enchère
+    print("\nTest de création d'enchère:")
+    try:
+        auction_dict = {col.name: None for col in Auction.__table__.columns 
+                       if col.name != 'id'}
+        print(f"Paramètres à utiliser: {auction_dict}")
+    except Exception as e:
+        print(f"Erreur: {e}")
+
+@app.before_first_request
+def create_admin_account():
+    try:
+        # Vérifier si l'admin existe déjà
+        admin = User.query.filter_by(email="superadmin@auction11.com").first()
+        if not admin:
+            # Créer le compte administrateur
+            admin = User(
+                firstname="SUPER",
+                lastname="ADMIN",
+                email="superadmin@auction11.com",
+                password_hash=generate_password_hash("WebCestCool", method='pbkdf2:sha256'),
+                token_balance=999,  # Beaucoup de jetons
+                registration_date=datetime.utcnow(),
+                is_admin=True  # Définir comme administrateur
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("Compte administrateur créé avec succès!")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erreur lors de la création du compte admin: {e}")

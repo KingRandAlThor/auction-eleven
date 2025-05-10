@@ -34,8 +34,13 @@
                         <a class="nav-link {% if request.endpoint == 'tokens' %}active{% endif %}" href="{{ url_for('tokens') }}">Jetons</a>
                     </li>
                 </ul>
-                <ul class="navbar-nav">
+                <ul class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link btn btn-success text-white" href="{{ url_for('create_auction') }}">
+                                <i class="bi bi-plus-circle me-1"></i> Vendre un produit
+                            </a>
+                        </li>
                         {% if current_user.is_admin %}
                         <li class="nav-item">
                             <a class="nav-link" href="#">Administration</a>

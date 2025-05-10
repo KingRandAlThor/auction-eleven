@@ -54,7 +54,7 @@
                                     Prix de base
                                 {% endif %}
                             </div>
-                            <a href="{{ url_for('auction_detail', id=auction.id) }}" class="btn btn-primary">Voir l'enchère</a>
+                            <a href="{{ url_for('auction_detail', auction_id=auction.id) }}" class="btn btn-primary">Voir l'enchère</a>
                         </div>
                     </div>
                 </div>
@@ -90,7 +90,7 @@
                         </div>
                     </div>
                     
-                    <a href="{{ url_for('auction_detail', id=auction.id) }}" class="btn btn-outline-primary w-100">
+                    <a href="{{ url_for('auction_detail', auction_id=auction.id) }}" class="btn btn-outline-primary w-100">
                         <i class="bi bi-hand-index-thumb me-1"></i> Voir et participer
                     </a>
                 </div>

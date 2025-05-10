@@ -1,4 +1,5 @@
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, PasswordField, BooleanField, FloatField, IntegerField, TextAreaField, SelectField, SubmitField, DecimalField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, ValidationError
 from models import User
@@ -84,3 +85,35 @@ class AuctionForm(FlaskForm):
         ('ended', 'Terminée')
     ])
     submit = SubmitField('Enregistrer')
+
+class AuctionCreateForm(FlaskForm):
+    # Informations produit
+    product_name = StringField('Nom du produit', validators=[DataRequired(), Length(min=3, max=100)])
+    description = TextAreaField('Description', validators=[DataRequired(), Length(min=10, max=1000)])
+    market_price = DecimalField('Prix du marché (€)', validators=[DataRequired(), NumberRange(min=1)])
+    
+    # Image du produit
+    product_image = FileField('Image du produit', validators=[
+        FileAllowed(['jpg', 'jpeg', 'png'], 'Images uniquement (JPG, JPEG, PNG)')
+    ])
+    
+    # Paramètres de l'enchère
+    duration = SelectField('Durée de l\'enchère', choices=[
+        ('3', '3 jours'),
+        ('7', '7 jours'),
+        ('14', '14 jours')
+    ], validators=[DataRequired()])
+    
+    tokens_required = IntegerField('Jetons requis pour participer', 
+                                  validators=[DataRequired(), NumberRange(min=1, max=10)])
+    
+    submit = SubmitField('Créer l\'enchère')
+
+class CreateAuctionForm(FlaskForm):
+    product_name = StringField('Nom du produit', validators=[DataRequired(), Length(min=3, max=100)])
+    description = TextAreaField('Description', validators=[DataRequired(), Length(min=10, max=1000)])
+    market_price = DecimalField('Prix estimé (€)', validators=[DataRequired(), NumberRange(min=1)])
+    image = FileField('Image du produit', validators=[FileAllowed(['jpg', 'jpeg', 'png'], 'Images uniquement')])
+    duration = SelectField('Durée', choices=[('3', '3 jours'), ('7', '7 jours'), ('14', '14 jours')], default='7')
+    tokens_required = IntegerField('Jetons requis', validators=[DataRequired(), NumberRange(min=1, max=10)], default=1)
+    submit = SubmitField('Mettre en vente')
